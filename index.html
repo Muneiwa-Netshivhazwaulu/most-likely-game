@@ -57,6 +57,7 @@
 </div>
 
 <div class="card hidden" id="game">
+  <button id="resetBtn" class="hidden" onclick="resetGame()">🔄 New Game (Host)</button>
   <h1 id="question">Who's most likely to…</h1>
   <div class="options" id="options"></div>
   <button id="nextBtn" class="hidden" onclick="nextQuestion()">Next Question (Host)</button>
@@ -94,6 +95,7 @@
   let username = "";
   let room = "";
   let isHost = false;
+  let sessionId = null;
 
   window.joinRoom = async () => {
     alert("Join Game clicked");
@@ -114,15 +116,22 @@
 
     if (!snapshot.exists()) {
       isHost = true;
+      sessionId = Date.now();
       roomRef.set({
+        sessionId,
         question: "Who's most likely to " + QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)],
         players: {},
-        votes: {}
+        votes: {},
+        scores: {}
       });
       document.getElementById('nextBtn').classList.remove('hidden');
+      document.getElementById('resetBtn').classList.remove('hidden');
+    } else {
+      sessionId = snapshot.val().sessionId;
     }
 
     roomRef.child('players').push(username);
+    roomRef.child('scores/' + username).set(0);
     listenForGame();
   };
 
@@ -163,6 +172,9 @@
 
         if (winner) {
           document.getElementById('question').innerText = `🏆 ${winner} wins this round!`;
+          if (data.scores && data.scores[winner] !== undefined) {
+            db.ref(`rooms/${room}/scores/${winner}`).set(data.scores[winner] + 1);
+          }
         }
       }
     });
@@ -172,6 +184,18 @@
     const q = "Who's most likely to " + QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
     db.ref(`rooms/${room}/question`).set(q);
     db.ref(`rooms/${room}/votes`).set({});
+  };
+
+  window.resetGame = () => {
+    if (!isHost) return;
+    const newSession = Date.now();
+    db.ref(`rooms/${room}`).set({
+      sessionId: newSession,
+      question: "Who's most likely to " + QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)],
+      players: {},
+      votes: {},
+      scores: {}
+    });
   };
 
   const vote = async (choice) => {
