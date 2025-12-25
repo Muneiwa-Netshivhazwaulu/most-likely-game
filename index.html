@@ -62,10 +62,9 @@
   <button id="nextBtn" class="hidden" onclick="nextQuestion()">Next Question (Host)</button>
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue, push, set, get, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyCCsGJ90tOfI_falyoe3yPV9SJ1Ic8ByHs",
     authDomain: "most-likely-114bc.firebaseapp.com",
@@ -76,8 +75,8 @@
     appId: "1:3398254312:web:d7a0496e4e76221072535d"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
   const QUESTIONS = [
     "forget their own birthday",
@@ -110,12 +109,12 @@
     document.getElementById('login').classList.add('hidden');
     document.getElementById('game').classList.remove('hidden');
 
-    const roomRef = ref(db, `rooms/${room}`);
-    const snapshot = await get(roomRef);
+    const roomRef = db.ref(`rooms/${room}`);
+    const snapshot = await roomRef.get();
 
     if (!snapshot.exists()) {
       isHost = true;
-      set(roomRef, {
+      roomRef.set({
         question: "Who's most likely to " + QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)],
         players: {},
         votes: {}
@@ -123,14 +122,14 @@
       document.getElementById('nextBtn').classList.remove('hidden');
     }
 
-    push(ref(db, `rooms/${room}/players`), username);
+    roomRef.child('players').push(username);
     listenForGame();
   };
 
   const listenForGame = () => {
-    const roomRef = ref(db, `rooms/${room}`);
+    const roomRef = db.ref(`rooms/${room}`);
 
-    onValue(roomRef, snapshot => {
+    roomRef.on('value', snapshot => {
       const data = snapshot.val();
       if (!data) return;
 
@@ -167,24 +166,22 @@
         }
       }
     });
-      }
-    });
   };
 
   window.nextQuestion = () => {
     const q = "Who's most likely to " + QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
-    set(ref(db, `rooms/${room}/question`), q);
-    set(ref(db, `rooms/${room}/votes`), {});
+    db.ref(`rooms/${room}/question`).set(q);
+    db.ref(`rooms/${room}/votes`).set({});
   };
 
   const vote = async (choice) => {
-    const voteRef = ref(db, `rooms/${room}/votes/${username}`);
-    const snap = await get(voteRef);
+    const voteRef = db.ref(`rooms/${room}/votes/${username}`);
+    const snap = await voteRef.get();
     if (snap.exists()) {
       alert("You already voted this round");
       return;
     }
-    set(voteRef, choice);
+    voteRef.set(choice);
     alert(`You voted for ${choice}`);
   };
 </script>
