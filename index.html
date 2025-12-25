@@ -144,6 +144,28 @@
           optionsDiv.appendChild(btn);
         });
       }
+
+      if (data.votes) {
+        const tally = {};
+        Object.values(data.votes).forEach(choice => {
+          tally[choice] = (tally[choice] || 0) + 1;
+        });
+
+        let winner = null;
+        let maxVotes = 0;
+        for (const name in tally) {
+          if (tally[name] > maxVotes) {
+            maxVotes = tally[name];
+            winner = name;
+          }
+        }
+
+        if (winner) {
+          document.getElementById('question').innerText = `🏆 ${winner} wins this round!`;
+        }
+      }
+    });
+      }
     });
   };
 
@@ -153,11 +175,14 @@
     set(ref(db, `rooms/${room}/votes`), {});
   };
 
-  const vote = (choice) => {
-    push(ref(db, `rooms/${room}/votes`), {
-      voter: username,
-      choice
-    });
+  const vote = async (choice) => {
+    const voteRef = ref(db, `rooms/${room}/votes/${username}`);
+    const snap = await get(voteRef);
+    if (snap.exists()) {
+      alert("You already voted this round");
+      return;
+    }
+    set(voteRef, choice);
     alert(`You voted for ${choice}`);
   };
 </script>
