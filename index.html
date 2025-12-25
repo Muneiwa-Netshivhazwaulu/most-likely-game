@@ -96,6 +96,7 @@
   let room = "";
   let isHost = false;
   let sessionId = null;
+  let myPlayerKey = null;
 
   window.joinRoom = async () => {
     alert("Join Game clicked");
@@ -119,6 +120,8 @@
       sessionId = Date.now();
       roomRef.set({
         sessionId,
+        host: null,{
+        sessionId,
         question: "Who's most likely to " + QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)],
         players: {},
         votes: {},
@@ -130,7 +133,16 @@
       sessionId = snapshot.val().sessionId;
     }
 
-    roomRef.child('players').push(username);
+    const newPlayerRef = roomRef.child('players').push(username);
+    myPlayerKey = newPlayerRef.key;
+    roomRef.child('scores/' + username).set(0);
+
+    window.addEventListener('beforeunload', () => {
+      if (myPlayerKey) {
+        roomRef.child('players/' + myPlayerKey).remove();
+        roomRef.child('scores/' + username).remove();
+      }
+    });
     roomRef.child('scores/' + username).set(0);
     listenForGame();
   };
@@ -147,10 +159,27 @@
       optionsDiv.innerHTML = "";
 
       if (data.players) {
-        Object.values(data.players).forEach(player => {
+        Object.entries(data.players).forEach(([key, player]) => {(player => {
           const btn = document.createElement('button');
           btn.innerText = player;
           btn.onclick = () => vote(player);
+          optionsDiv.appendChild(btn);
+        });
+
+        // Host reassignment if current host left
+        if (!data.host && Object.keys(data.players).length > 0) {
+          const firstKey = Object.keys(data.players)[0];
+          db.ref(`rooms/${room}/host`).set(firstKey);
+        }
+
+        if (data.host === myPlayerKey) {
+          isHost = true;
+          document.getElementById('nextBtn').classList.remove('hidden');
+          document.getElementById('resetBtn').classList.remove('hidden');
+        } else {
+          isHost = false;
+          document.getElementById('nextBtn').classList.add('hidden');
+          document.getElementById('resetBtn').classList.add('hidden');
           optionsDiv.appendChild(btn);
         });
       }
